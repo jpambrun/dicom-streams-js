@@ -73,7 +73,7 @@ export function randomUID(root: string): string {
 
 export const multiValueDelimiter = '\\';
 
-export const emptyBuffer = Buffer.alloc(0);
+export const emptyBuffer: Buffer = Buffer.alloc(0);
 
 export function toUInt32(num: number): number {
     return num >>> 0;
