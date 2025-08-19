@@ -71,4 +71,50 @@ describe('A DICOM elements flow', () => {
                 .expectDicomComplete();
         });
     });
+
+    it('should include a single combined byte range on ValueElement from parseFlow ValueChunks', () => {
+        const long = Buffer.from('HelloWorldAndMoreData'); // 21 bytes (PN gets padded to even length)
+        const bytes = data.element(Tag.PatientName, long);
+        const chunkSize = 8;
+        const expectedPadded = Buffer.concat([long, Buffer.from([0x20])]);
+    // Expect chunks: header 8 bytes, then offsets 8/len8, 16/len8, 24/len6
+    // Combined range should be [8, 22]
+        return util.testParts(bytes, pipe(parseFlow(chunkSize), elementFlow()), (elements) => {
+            util
+                .elementProbe(elements)
+        .expectElementWithRange(Tag.PatientName, [8, 22], expectedPadded)
+                .expectDicomComplete();
+        });
+    });
+
+    it('should include a single combined byte range on FragmentElement from parseFlow ValueChunks', () => {
+        const bytes = concatv(
+            data.pixeDataFragments(),
+            item(10),
+            Buffer.from('0123456789'),
+            item(3),
+            Buffer.from('abc'),
+            sequenceDelimitation(),
+        );
+        const chunkSize = 4;
+        // For first fragment length 10: header (item) 8 bytes at stream position after fragments header.
+        // Ranges will combine across chunks with size 4,4,2 within the fragment value region.
+        return util.testParts(bytes, pipe(parseFlow(chunkSize), elementFlow()), (elements) => {
+            util
+                .elementProbe(elements)
+                .expectFragments(Tag.PixelData)
+                .expectFragmentWithRange(10, [
+                    // Offsets depend on total preceding header sizes:
+                    // pixeDataFragments() is a header of 12 bytes for FragmentsPart.
+                    // item(10) adds 8 bytes, then value chunks start at offset 12+8 = 20.
+                    20, 10,
+                ])
+                .expectFragmentWithRange(3, [
+                    // next item header at offset 12 + (8 + 10) + 8 = 38, value starts at 38
+                    38, 3,
+                ])
+                .expectSequenceDelimitation()
+                .expectDicomComplete();
+        });
+    });
 });

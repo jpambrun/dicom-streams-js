@@ -30,6 +30,7 @@ export function elementFlow(): any {
             private bytes: Buffer = emptyBuffer;
             private currentValue: ValueElement;
             private currentFragment: FragmentElement;
+            private currentRange?: [number, number];
 
             public onPart(part: DicomPart): Element[] {
                 if (part instanceof PreamblePart) {
@@ -43,19 +44,32 @@ export function elementFlow(): any {
                         Value.empty(),
                         part.bigEndian,
                         part.explicitVR,
+                        undefined,
                     );
                     this.bytes = emptyBuffer;
+                    this.currentRange = undefined;
                     return [];
                 }
 
                 if (part instanceof ItemPart && this.inFragments) {
                     this.currentFragment = new FragmentElement(part.length, Value.empty(), part.bigEndian);
                     this.bytes = emptyBuffer;
+                    this.currentRange = undefined;
                     return [];
                 }
 
                 if (part instanceof ValueChunk) {
                     this.bytes = concat(this.bytes, part.bytes);
+                    if (part.offset != null && part.length != null) {
+                        if (!this.currentRange) {
+                            this.currentRange = [part.offset, part.length];
+                        } else {
+                            const [off, len] = this.currentRange;
+                            const newStart = Math.min(off, part.offset);
+                            const newEnd = Math.max(off + len, part.offset + part.length);
+                            this.currentRange = [newStart, newEnd - newStart];
+                        }
+                    }
                     if (part.last) {
                         if (this.inFragments) {
                             if (this.currentFragment === undefined) {
@@ -66,6 +80,7 @@ export function elementFlow(): any {
                                         this.currentFragment.length,
                                         new Value(this.bytes),
                                         this.currentFragment.bigEndian,
+                                        this.currentRange,
                                     ),
                                 ];
                             }
@@ -77,6 +92,7 @@ export function elementFlow(): any {
                                     new Value(this.bytes),
                                     this.currentValue.bigEndian,
                                     this.currentValue.explicitVR,
+                                    this.currentRange,
                                 ),
                             ];
                         }

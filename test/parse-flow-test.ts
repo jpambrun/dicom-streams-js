@@ -21,6 +21,36 @@ import * as data from './test-data';
 import * as util from './test-util';
 
 describe('DICOM parse flow', () => {
+    it('should include byte offset/length on ValueChunk for single-chunk values', () => {
+        const bytes = data.patientNameJohnDoe();
+        // Header is 8 + 2 (VR) + 2 (len) since PN is 8 byte header in explicit VR: total header 8 bytes
+        // Value is 'John^Doe' (8 bytes). ValueChunk should start at offset 8 and length 8.
+        return util.testParts(bytes, parseFlow(), (parts) => {
+            util
+                .partProbe(parts)
+                .expectHeader(Tag.PatientName)
+                .expectValueChunkRange(8, 8)
+                .expectDicomComplete();
+        });
+    });
+
+    it('should include correct offsets across multiple ValueChunks', () => {
+        // Create a long VR value to force chunking; set parseFlow chunkSize small
+        const long = Buffer.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'); // 36 bytes
+        const element = data.element(Tag.PatientName, long);
+        const chunkSize = 10;
+        return util.testParts(element, parseFlow(chunkSize), (parts) => {
+            // header 8 bytes, then ValueChunks at offsets 8, 18, 28, 38 (last is 36 total -> 8+10,18,28, 36 is len -> last chunk len 6)
+            util
+                .partProbe(parts)
+                .expectHeader(Tag.PatientName)
+                .expectValueChunkRange(8, 10)
+                .expectValueChunkRange(18, 10)
+                .expectValueChunkRange(28, 10)
+                .expectValueChunkRange(38, 6)
+                .expectDicomComplete();
+        });
+    });
     it('should produce a preamble, FMI tags and dataset tags for a complete DICOM file', () => {
         const bytes = concatv(
             data.preamble,

@@ -344,22 +344,24 @@ class InValue extends DicomParseStep {
     }
 
     public parse(reader: ByteReader): ParseResult {
-        return this.state.bytesLeft <= this.flow.chunkSize
-            ? new ParseResult(
-                  new ValueChunk(this.state.bigEndian, reader.take(this.state.bytesLeft), true),
-                  this.state.nextStep,
-              )
-            : new ParseResult(
-                  new ValueChunk(this.state.bigEndian, reader.take(this.flow.chunkSize), false),
-                  new InValue(
-                      new ValueState(
-                          this.state.bigEndian,
-                          this.state.bytesLeft - this.flow.chunkSize,
-                          this.state.nextStep,
-                      ),
-                      this.flow,
-                  ),
-              );
+        if (this.state.bytesLeft <= this.flow.chunkSize) {
+            const off = reader.absoluteOffset();
+            const len = this.state.bytesLeft;
+            return new ParseResult(
+                new ValueChunk(this.state.bigEndian, reader.take(len), true, off, len),
+                this.state.nextStep,
+            );
+        } else {
+            const off = reader.absoluteOffset();
+            const len = this.flow.chunkSize;
+            return new ParseResult(
+                new ValueChunk(this.state.bigEndian, reader.take(len), false, off, len),
+                new InValue(
+                    new ValueState(this.state.bigEndian, this.state.bytesLeft - len, this.state.nextStep),
+                    this.flow,
+                ),
+            );
+        }
     }
 }
 

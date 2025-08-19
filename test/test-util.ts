@@ -83,6 +83,16 @@ export class PartProbe {
         return this;
     }
 
+    public expectValueChunkRange(offset: number, length: number): PartProbe {
+        const part = this.array[this.offset];
+        assert(part instanceof ValueChunk);
+        const vc = part as ValueChunk;
+        assert.strictEqual(vc.offset, offset);
+        assert.strictEqual(vc.length ?? vc.bytes.length, length);
+        this.offset++;
+        return this;
+    }
+
     public expectDeflatedChunk(): PartProbe {
         assert(this.array[this.offset] instanceof DeflatedChunk);
         this.offset++;
@@ -192,6 +202,29 @@ class ElementProbe {
             }
             this.offset++;
         }
+        return this;
+    }
+
+    public expectElementWithRange(tag: number, range: [number, number], value?: Buffer): ElementProbe {
+        const part: Element = this.array[this.offset];
+        assert(part instanceof ValueElement);
+        const ve = part as ValueElement;
+        assert.strictEqual(ve.tag, tag);
+        if (value !== undefined) {
+            assert.deepStrictEqual(ve.value.bytes, value);
+        }
+        assert.deepStrictEqual(ve.range, range);
+        this.offset++;
+        return this;
+    }
+
+    public expectFragmentWithRange(length: number, range: [number, number]): ElementProbe {
+        const part: Element = this.array[this.offset];
+        assert(part instanceof FragmentElement);
+        const fe = part as FragmentElement;
+        assert.strictEqual(fe.length, length);
+        assert.deepStrictEqual(fe.range, range);
+        this.offset++;
         return this;
     }
 

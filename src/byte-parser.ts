@@ -32,12 +32,16 @@ export class ParseResult {
 export class ByteReader {
     private input = emptyBuffer;
     private off = 0;
+    private absOff = 0; // absolute offset in the overall stream buffer processed so far
 
     constructor(input: Buffer) {
         this.setInput(input);
     }
 
     public setInput(input: Buffer): void {
+        // When switching to a new input buffer (remainingData of previous step),
+        // the absolute offset should advance by the number of bytes consumed from the previous input.
+        // Callers are expected to setInput with the current buffer slice; we preserve absOff as-is.
         this.input = input;
         this.off = 0;
     }
@@ -52,6 +56,10 @@ export class ByteReader {
 
     public remainingData(): Buffer {
         return this.hasRemaining() ? this.input.slice(this.off) : emptyBuffer;
+    }
+
+    public absoluteOffset(): number {
+        return this.absOff + this.off;
     }
 
     public ensure(n: number): void {
@@ -126,6 +134,7 @@ export class ByteParser {
 
     private doParseInner(): boolean {
         if (this.buffer.length > 0) {
+            // set input to current buffer; absolute offset remains at current value
             this.reader.setInput(this.buffer);
             try {
                 const parseResult = this.current.parse(this.reader);
@@ -137,6 +146,11 @@ export class ByteParser {
                     this.complete();
                     return dontRecurse;
                 } else {
+                    const consumed = this.buffer.length - this.reader.remainingData().length;
+                    // Advance absolute offset by consumed bytes and keep only remaining data
+                    // Note: ByteReader stores absOff internally; we update it here since we own the buffer lifecycle.
+                    // @ts-ignore - access private for internal coordination
+                    this.reader["absOff"] = (this.reader["absOff"] || 0) + consumed;
                     this.buffer = this.reader.remainingData();
                     this.current = parseResult.nextStep;
                     if (!this.reader.hasRemaining()) {

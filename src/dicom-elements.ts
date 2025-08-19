@@ -78,14 +78,31 @@ export const preambleElement = new PreambleElement();
 
 export class ValueElement extends ElementSet {
     public length: number;
+    // Optional single byte range [offset, length] in the original stream for the value payload
+    public readonly range?: [number, number];
 
-    constructor(tag: number, vr: VR, public readonly value: Value, bigEndian?: boolean, explicitVR?: boolean) {
+    constructor(
+        tag: number,
+        vr: VR,
+        public readonly value: Value,
+        bigEndian?: boolean,
+        explicitVR?: boolean,
+        range?: [number, number],
+    ) {
         super(tag, vr, bigEndian, explicitVR);
         this.length = value.length;
+        this.range = range;
     }
 
     public setValue(value: Value): ValueElement {
-        return new ValueElement(this.tag, this.vr, value.ensurePadding(this.vr), this.bigEndian, this.explicitVR);
+        return new ValueElement(
+            this.tag,
+            this.vr,
+            value.ensurePadding(this.vr),
+            this.bigEndian,
+            this.explicitVR,
+            this.range,
+        );
     }
     public toBytes(): Buffer {
         return this.toParts()
@@ -205,8 +222,17 @@ export class ItemElement extends Element {
 }
 
 export class FragmentElement extends Element {
-    constructor(public readonly length: number, public readonly value: Value, bigEndian?: boolean) {
+    // Optional single byte range [offset, length] from the original stream for this fragment payload
+    public readonly range?: [number, number];
+
+    constructor(
+        public readonly length: number,
+        public readonly value: Value,
+        bigEndian?: boolean,
+        range?: [number, number],
+    ) {
         super(bigEndian);
+        this.range = range;
     }
 
     public toBytes(): Buffer {
@@ -363,7 +389,7 @@ export class Fragment {
         public readonly length: number,
         public readonly value: Value,
         public readonly bigEndian: boolean = false,
-    ) {}
+    ) { }
 
     public toElement(): Element {
         return new FragmentElement(this.length, this.value, this.bigEndian);

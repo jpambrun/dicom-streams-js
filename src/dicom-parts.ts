@@ -118,7 +118,13 @@ export class HeaderPart extends DicomPart {
 }
 
 export class ValueChunk extends DicomPart {
-    constructor(bigEndian: boolean, bytes: Buffer, public readonly last: boolean) {
+    constructor(
+        bigEndian: boolean,
+        bytes: Buffer,
+        public readonly last: boolean,
+        public readonly offset?: number,
+        public readonly length?: number,
+    ) {
         super(bigEndian, bytes);
     }
 
@@ -132,7 +138,9 @@ export class ValueChunk extends DicomPart {
         if (this.bytes.length > 100) {
             ascii = ascii + '...';
         }
-        return 'ValueChunk [length = ' + this.bytes.length + ', last = ' + this.last + ', ascii = ' + ascii + ']';
+        const len = this.length != null ? this.length : this.bytes.length;
+        const off = this.offset != null ? ', offset = ' + this.offset : '';
+        return 'ValueChunk [length = ' + len + off + ', last = ' + this.last + ', ascii = ' + ascii + ']';
     }
 }
 
