@@ -40,10 +40,18 @@ const convertToDicomweb = (src, dst = {}) => {
         const { vr, bigEndian, value, tag, items, fragments } = element;
         const hextag = tagToString(tag);
         if (value) {
-            dst[hextag] = {
-                vr: vr.name,
-                value: [value.toString(vr.name, bigEndian, characterSets)],
-            };
+            switch (vr.name) {
+                case "PN":
+                    dst[hextag] = { vr: vr.name, value: [{ Alphabetic: value.toString(vr.name, bigEndian, characterSets) }] };
+                    break;
+                case "OB":
+                case "OW":
+                case "OF":
+                    dst[hextag] = { vr: vr.name, value: [{ range: element.range }] };
+                    break;
+                default:
+                    dst[hextag] = { vr: vr.name, value: value.toStrings(vr.name, bigEndian, characterSets) };
+            }
         } else if (items && vr.name === "SQ") {
             dst[hextag] = {
                 vr: vr.name,
@@ -71,7 +79,8 @@ await pipe(
     elementFlow(),
     // new LogTransform(),
     elementSink(elements => {
-        console.log(convertToDicomweb(elements));
+        const dicomweb = convertToDicomweb(elements);
+        // console.log(dicomweb);
     })
     // new SinkWritable()
 );
