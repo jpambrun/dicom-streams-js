@@ -42,7 +42,18 @@ const convertToDicomweb = (src, dst = {}) => {
         if (value) {
             switch (vr.name) {
                 case "PN":
-                    dst[hextag] = { vr: vr.name, value: [{ Alphabetic: value.toString(vr.name, bigEndian, characterSets) }] };
+                    dst[hextag] = { vr: vr.name, value: value.toStrings(vr.name, bigEndian, characterSets).map(pn => ({ Alphabetic: pn })) };
+                    break;
+                case "US":
+                case "SS":
+                case "UL":
+                case "SL":
+                case "IS":
+                case "DS":
+                case "FL":
+                case "FD":
+                case "SH":
+                    dst[hextag] = { vr: vr.name, value: value.toNumbers(vr, bigEndian, characterSets) };
                     break;
                 case "OB":
                 case "OW":
@@ -50,7 +61,7 @@ const convertToDicomweb = (src, dst = {}) => {
                     dst[hextag] = { vr: vr.name, value: [{ range: element.range }] };
                     break;
                 default:
-                    dst[hextag] = { vr: vr.name, value: value.toStrings(vr.name, bigEndian, characterSets) };
+                    dst[hextag] = { vr: vr.name, value: value.toStrings(vr, bigEndian, characterSets) };
             }
         } else if (items && vr.name === "SQ") {
             dst[hextag] = {
