@@ -389,13 +389,16 @@ export class Fragment {
         public readonly length: number,
         public readonly value: Value,
         public readonly bigEndian: boolean = false,
+        // Optional single byte range [offset, length] from the original stream for this fragment payload
+        public readonly range?: [number, number],
     ) { }
 
     public toElement(): Element {
-        return new FragmentElement(this.length, this.value, this.bigEndian);
+        return new FragmentElement(this.length, this.value, this.bigEndian, this.range);
     }
     public toString(): string {
-        return 'Fragment(length = ' + this.length + ', value length = ' + this.value.length + ')';
+        const rangeStr = this.range ? `, range = [${this.range[0]}, ${this.range[1]}]` : '';
+        return 'Fragment(length = ' + this.length + ', value length = ' + this.value.length + rangeStr + ')';
     }
 }
 

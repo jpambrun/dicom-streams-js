@@ -81,7 +81,7 @@ export class ElementsBuilder {
             this.subtractLength(8 + element.length);
             if (this.fragments !== undefined) {
                 const updatedFragments = this.fragments.addFragment(
-                    new Fragment(element.length, element.value, element.bigEndian),
+                    new Fragment(element.length, element.value, element.bigEndian, element.range),
                 );
                 this.updateFragments(updatedFragments);
             }
