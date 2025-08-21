@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import  { parseFlow, elementFlow, elementSink, pipe, ValueChunk } from 'https://esm.sh/gh/jpambrun/dicom-streams-js@f250f9f'
+import { parseFlow, elementFlow, elementSink, pipe, ValueChunk, HeaderPart } from 'https://esm.sh/gh/jpambrun/dicom-streams-js@f250f9f'
 import stream from 'node:stream';
 // https://support.dcmtk.org/docs/dcm2json.html
 
@@ -9,15 +9,19 @@ function tagToString(tag) {
 }
 
 class FilterLargeValue extends stream.Transform {
-    constructor(maxSize=100) {
+    constructor(maxSize = 100) {
         super({ objectMode: true });
         this.maxSize = maxSize;
+        this.currentVR = null;
+        this.VRToFilter = ["OB", "OW", "OF"]
     }
     _transform(chunk, encoding, callback) {
         if (chunk instanceof ValueChunk) {
-            if (chunk?.bytes?.length > this.maxSize) {
+            if (chunk?.bytes?.length > this.maxSize && this.VRToFilter.includes(this.currentVR)) {
                 chunk.bytes = Buffer.alloc(0);
             }
+        } else if (chunk instanceof HeaderPart) {
+            this.currentVR = chunk.vr.name;
         }
         callback(null, chunk);
     }
@@ -74,8 +78,6 @@ const convertToDicomweb = (src, dst = {}) => {
                 dst[hextag].value.push(converted);
             }
         } else if (fragments) {
-            //TODO
-            // dst[hextag] = { vr: vr.name, value: fragments[0].range };
             dst[hextag] = { vr: vr.name, value: fragments.map(f => ({ range: f.range })) };
 
         } else {
