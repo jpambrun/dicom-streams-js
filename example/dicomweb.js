@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import  { parseFlow, elementFlow, elementSink, pipe, VR, ValueChunk } from 'https://esm.sh/gh/jpambrun/dicom-streams-js@b9f3be0'
+import  { parseFlow, elementFlow, elementSink, pipe, ValueChunk } from 'https://esm.sh/gh/jpambrun/dicom-streams-js@f250f9f'
 import stream from 'node:stream';
 // https://support.dcmtk.org/docs/dcm2json.html
 
@@ -64,7 +64,9 @@ const convertToDicomweb = (src, dst = {}) => {
             }
         } else if (fragments) {
             //TODO
-            console.log(element);
+            // dst[hextag] = { vr: vr.name, value: fragments[0].range };
+            dst[hextag] = { vr: vr.name, value: fragments.map(f => ({ range: f.range })) };
+
         } else {
             throw new Error(`Unsupported element: ${hextag} with VR ${vr.name}`);
         }
@@ -80,7 +82,8 @@ await pipe(
     // new LogTransform(),
     elementSink(elements => {
         const dicomweb = convertToDicomweb(elements);
-        // console.log(dicomweb);
+        console.log(dicomweb);
+        // console.log(elements)
     })
     // new SinkWritable()
 );
